@@ -64,7 +64,7 @@ for n in range(4**N):
 	sigma[n] = to_append
 
 # Dynamics
-phi = 0
+phi = 1
 U = np.cos(phi) * np.identity(2**N) + 1j * np.sin(phi) * sigma[2]
 
 # Initial states
@@ -122,8 +122,27 @@ for p in range(4**N):
 
 # Given P_pq and A_pqij, find eta_ij
 eta_unpacked = np.linalg.solve(A_unpacked, Prob_unpacked)
-eta = eta_unpacked.reshape((4**N, 4**N))
+eta = np.zeros((4**N, 4**N), dtype = np.complex128)
+for n in range(16**N):
+	j = n % 4**N
+	i = n // 4**N
+	eta[i, j] = eta_unpacked[n]
 
+# Verification
+calc_rho = np.zeros((4**N, 2**N, 2**N), dtype = np.complex128)
+for p in range(4**N):
+	to_append = np.zeros((2**N, 2**N), dtype = np.complex128)
+	for i in range(4**N):
+		for j in range(4**N):
+			to_append += eta[i, j] * sigma[i] @ rho[p] @ sigma[j].conj().T
+	calc_rho[p] = to_append
+
+# Output results
+print("eta_ij")
 print(np.round(eta, 5))
-print()
+print("\nLatex code for eta_ij")
 print_latex(np.round(eta, 5))
+print("\nSum of terms in (rho final - calculated rho)")
+print(np.sum(rho_final - calc_rho))
+# print("\nrho final - calculated rho")
+# print(np.round(rho_final - calc_rho, 5))
