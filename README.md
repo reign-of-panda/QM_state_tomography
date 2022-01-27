@@ -3,7 +3,7 @@
 
 ## Files
 - .csv files: These are data files. The naming format is NxSy, where x is the number of qubits used and y is the number of samples taken
-- QTomography.py: File in which the functions used to find the <pre xml:lang="latex">\eta_{ij}</pre> coefficients, imported in other files
+- QTomography.py: File in which the functions used to find the <pre xml:lang="latex">$\eta_{ij}$</pre> coefficients, imported in other files
 - multiple_qubits.py: Calculates $'\eta_{ij}'$ for an arbitrary number of qubits
 - multiple_qubits_old.py: Old version of multiple_qubits.py, does not use the functions in QTomography.py
 - state_prep_err.py: Calculates the difference between an experimental and a theoretical eta against infidelity. Also plots and saves the data
