@@ -56,34 +56,14 @@ def single_trial(eps, N):
 	_, A_unpacked = get_A(P, sigma, rho_t, N)
 
 	eta_e = get_eta(A_unpacked, Prob_unpacked, N)
-	print(np.linalg.eigh(eta_e))
+
+	reconstructed = reconstruct(eta_e, sigma, rho_t, N)
+	print(np.sum(rho_final - reconstructed))
 
 	diff = eta_t - eta_e
 	# deta = np.real(np.trace(sqrtm(diff.conj().T @ diff)))
 	deta = np.sqrt(np.real(np.trace(diff.conj().T @ diff)))
 
 	return np.mean(infidelities), deta
+
 single_trial(0.1, 1)
-quit()
-n_samples = 1000
-eps_max = 0.1
-infids = np.zeros((n_samples, ))
-detas = np.zeros((n_samples, ))
-for i in range(n_samples):
-	if i%100 == 0:
-		print(i)
-	eps = i * eps_max / n_samples
-	a, b = single_trial(eps, N)
-	infids[i] = a
-	detas[i] = b
-
-data = np.column_stack((infids, detas))
-np.savetxt("data.csv", data)
-
-plt.title("State preparation errors")
-plt.scatter(infids, detas**2, marker = "x")
-plt.grid()
-plt.xlabel("Infidelities")
-plt.ylabel(r"$||\eta^{T} - \eta^{E}||^{2}_{1}$")
-plt.show()
-

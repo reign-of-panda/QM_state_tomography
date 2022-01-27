@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 N = 1
 phi = 1
 
-eps = 0.1
+# eps = 0.01
 
 def rho_experimental(eps, N):
 	rho = np.zeros((4**N, 2**N, 2**N), dtype = np.complex128)
@@ -56,34 +56,22 @@ def single_trial(eps, N):
 	_, A_unpacked = get_A(P, sigma, rho_t, N)
 
 	eta_e = get_eta(A_unpacked, Prob_unpacked, N)
-	print(np.linalg.eigh(eta_e))
 
-	diff = eta_t - eta_e
-	# deta = np.real(np.trace(sqrtm(diff.conj().T @ diff)))
-	deta = np.sqrt(np.real(np.trace(diff.conj().T @ diff)))
+	# Find RHS
+	RHS = np.zeros((4**N,), dtype = np.complex128)
+	for p in range(4**N):
+		for i in range(4**N):
+			for j in range(4**N):
+				for I in range(4**N):
+					for J in range(4**N):
+						RHS[p] += eta_e[i, j] * eta_t[I, J] * np.trace(sigma[I] @ rho_t[p] @ sigma[J].conj().T @ sigma[i] @ rho_t[p] @ sigma[j].conj().T)
 
-	return np.mean(infidelities), deta
-single_trial(0.1, 1)
-quit()
-n_samples = 1000
-eps_max = 0.1
-infids = np.zeros((n_samples, ))
-detas = np.zeros((n_samples, ))
-for i in range(n_samples):
-	if i%100 == 0:
-		print(i)
-	eps = i * eps_max / n_samples
-	a, b = single_trial(eps, N)
-	infids[i] = a
-	detas[i] = b
+	return 1 - infidelities, RHS
 
-data = np.column_stack((infids, detas))
-np.savetxt("data.csv", data)
-
-plt.title("State preparation errors")
-plt.scatter(infids, detas**2, marker = "x")
-plt.grid()
-plt.xlabel("Infidelities")
-plt.ylabel(r"$||\eta^{T} - \eta^{E}||^{2}_{1}$")
-plt.show()
-
+a, b = single_trial(0.1, N)
+print("Different p")
+print(a)
+print(np.real(b))
+print("Sum")
+print(np.sum(a))
+print(np.sum(np.real(b)))
