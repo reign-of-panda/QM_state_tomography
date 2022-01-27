@@ -70,11 +70,19 @@ phi = 1
 def dynamics_unitary(phi, sigma, N):
 	return np.cos(phi) * np.identity(2**N) + 1j * np.sin(phi) * sigma[2]
 
+def single_qubit(theta, phi):
+	return np.array([[np.cos(theta/2)], [np.sin(theta/2) * np.exp(1j * phi)]])
+
 # Initial states
-s0 = np.array([[1], [0]])
-s1 = np.array([[0], [1]])
-s2 = np.array([[1], [1]]) / np.sqrt(2)
-s3 = np.array([[1], [1j]]) / np.sqrt(2)
+# s0 = np.array([[1], [0]])
+# s1 = np.array([[0], [1]])
+# s2 = np.array([[1], [1]]) / np.sqrt(2)
+# s3 = np.array([[1], [1j]]) / np.sqrt(2)
+theta = 2 * np.arccos(1/np.sqrt(3))
+s0 = single_qubit(0, 0)
+s1 = single_qubit(theta, 0)#2 * np.pi / 3
+s2 = single_qubit(theta, 2 * np.pi / 3)
+s3 = single_qubit(theta, -2 * np.pi / 3)
 s = np.array([s0, s1, s2, s3])
 
 def get_rho(N):
