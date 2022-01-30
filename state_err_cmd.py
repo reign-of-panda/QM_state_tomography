@@ -265,7 +265,7 @@ class state_prep:
     	return np.mean(infidelities), deta
     
     def do_runs(self):
-        self.single_trial(0.1, 1)
+        self.single_trial(self.eps, 1)
 
         n_samples = self.n_runs
         eps_max = self.eps_max
@@ -285,8 +285,8 @@ class state_prep:
         return infids, detas
         
     def plot_stuff(self, infids, detas):
-        plt.title("State preparation errors")
-        plt.scatter(infids, detas**2, marker = ".")
+        plt.title("State preparation errors - {} samples".format(self.n_runs))
+        plt.scatter(infids, detas**2, marker = ",")
         plt.grid()
         plt.xlabel("Infidelities")
         plt.ylabel(r"$||\eta^{T} - \eta^{E}||^{2}_{1}$")
