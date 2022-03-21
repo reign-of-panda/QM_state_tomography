@@ -284,6 +284,11 @@ def mixed_general(rho, eps, args = None):
 		phi = args[1]
 		lam = args[2]
 	rot_mat = u3(theta, phi, lam)
+
+	theta = np.arccos(np.random.uniform(-1, 1))
+	phi = np.random.uniform() * 2 * np.pi * eps
+	lam = np.random.uniform() * 2 * np.pi * eps
+
 	H = Cu3(theta, phi, lam) @ np.kron(np.identity(2), rot_mat)
 
 	rho2_f = H @ rho2_i @ H.conj().T
