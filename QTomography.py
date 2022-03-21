@@ -1,5 +1,15 @@
 import numpy as np
 from copy import deepcopy
+from scipy.linalg import sqrtm
+
+import copy
+######################################################################
+# TODO
+# - Angles from gaussian distribution
+# - Fix state generation
+
+######################################################################
+# Finding eta
 
 def print_latex(arr):
 	latex = "\\begin{pmatrix}"
@@ -68,7 +78,7 @@ def get_sigma(N):
 # Dynamics
 phi = 1
 def dynamics_unitary(phi, sigma, N):
-	return np.cos(phi) * np.identity(2**N) + 1j * np.sin(phi) * sigma[2]
+	return np.cos(phi) * np.identity(2**N) + 1j * np.sin(phi) * (sigma[3] / np.sqrt(2) + sigma[2] / np.sqrt(2))#2
 
 def single_qubit(theta, phi):
 	return np.array([[np.cos(theta/2)], [np.sin(theta/2) * np.exp(1j * phi)]])
@@ -78,9 +88,9 @@ def single_qubit(theta, phi):
 # s1 = np.array([[0], [1]])
 # s2 = np.array([[1], [1]]) / np.sqrt(2)
 # s3 = np.array([[1], [1j]]) / np.sqrt(2)
-theta = 2 * np.arccos(1/np.sqrt(3))
+theta = 2 * np.pi / 3# 2 * np.arccos(1/np.sqrt(3))
 s0 = single_qubit(0, 0)
-s1 = single_qubit(theta, 0)#2 * np.pi / 3
+s1 = single_qubit(theta, 0)
 s2 = single_qubit(theta, 2 * np.pi / 3)
 s3 = single_qubit(theta, -2 * np.pi / 3)
 s = np.array([s0, s1, s2, s3])
@@ -178,6 +188,134 @@ def find_eta(rho, phi, N):
 	eta = get_eta(A_unpacked, Prob_unpacked, N)
 	return eta, rho_final
 
+######################################################################
+# Fidelities
+
+def fidelity(A, B, pure = False):
+	if not pure:
+		return np.trace(sqrtm(sqrtm(A) @ B @ sqrtm(A)))**2
+	else:
+		return np.trace(A @ B)
+
+def get_infidelities(A, B, N):
+	infid = np.zeros((4**N, ))
+	for i in range(4**N):
+		infid[i] = 1 - np.real(fidelity(A[i], B[i], pure = False))
+	return infid
+
+def norm(eta1, eta2, n = 2):
+	diff = eta1 - eta2
+	if n == 1:
+		return np.real(np.trace(sqrtm(diff.conj().T @ diff)))
+	elif n == 2:
+		return np.sqrt(np.real(np.trace(diff.conj().T @ diff)))
+
+######################################################################
+# State generation
+
+def partial_trace(rho):
+	s1 = np.array([[1], [0]])
+	s2 = np.array([[0], [1]])
+	s = np.array([s1, s2])
+	tr = np.zeros((2, 2), dtype = np.complex128)
+	for i in range(2):
+		for j in range(2):
+			for I in range(2):
+				tr += s[i] @ s[j].conj().T * (np.kron(s[i], s[I]).conj().T @ rho @ np.kron(s[j], s[I]))
+	return tr
+
+CNOT = np.array([[1, 0, 0, 0],
+ 				 [0, 0, 0, 1],
+ 				 [0, 0, 1, 0],
+ 				 [0, 1, 0, 0]])
+
+def u3(theta, phi, lam):
+	c = np.cos(theta / 2)
+	s = np.sin(theta / 2)
+	e = np.exp(1j * phi)
+	l = np.exp(1j * lam)
+	return np.array([[c, -l * s], [e * s, l * e * c]])
+
+def Cu3(theta, phi, lam):
+	c = np.cos(theta / 2)
+	s = np.sin(theta / 2)
+	e = np.exp(1j * phi)
+	l = np.exp(1j * lam)
+	return np.array([[1, 0, 0, 0], 
+					 [0, c, 0, -l*s],
+					 [0, 0, 1, 0],
+					 [0, e*s, 0, l*e*c]])
+
+def mixed(rho, eps, args = None):
+	r0 = np.zeros((2, 2), dtype = np.complex128)
+	r0[0, 0] = 1
+
+	rho2_i = np.kron(rho, r0)
+
+	if args == None:
+		theta = np.random.random() * np.pi * eps
+		phi = np.random.random() * 2 * np.pi * eps
+		lam = np.random.random() * 2 * np.pi * eps
+	else:
+		theta = args[0]
+		phi = args[1]
+		lam = args[2]
+	rot_mat = u3(theta, phi, lam)
+	H = CNOT @ np.kron(np.identity(2), rot_mat)
+
+	rho2_f = H @ rho2_i @ H.conj().T
+
+	mixed_rho = partial_trace(rho2_f)
+	return mixed_rho
+
+def mixed_general(rho, eps, args = None):
+	r0 = np.zeros((2, 2), dtype = np.complex128)
+	r0[0, 0] = 1
+
+	rho2_i = np.kron(rho, r0)
+
+	if args == None:
+		# theta = np.random.uniform(0.5, 1) * np.pi * eps
+		theta = np.arccos(np.random.uniform(-1, 1))
+		phi = np.random.uniform() * 2 * np.pi * eps
+		lam = np.random.uniform() * 2 * np.pi * eps
+	else:
+		theta = args[0]
+		phi = args[1]
+		lam = args[2]
+	rot_mat = u3(theta, phi, lam)
+	H = Cu3(theta, phi, lam) @ np.kron(np.identity(2), rot_mat)
+
+	rho2_f = H @ rho2_i @ H.conj().T
+
+	mixed_rho = partial_trace(rho2_f)
+	return mixed_rho
+
+def rho_experimental(eps, rho_t, N):
+	rho_e = np.zeros(rho_t.shape, dtype = np.complex128)
+	for i in range(rho_e.shape[0]):
+		# theta = np.random.normal(scale = np.pi * eps)
+		# phi = np.random.normal(scale = 2 * np.pi * eps)
+		# lam = np.random.normal(scale = 2 * np.pi * eps)
+		theta = np.arccos(np.random.uniform(-1, 1))
+		phi = np.random.uniform(0, 2 * np.pi)
+		lam = np.random.uniform(0, 2 * np.pi)
+		rot_mat = u3(theta, phi, lam)
+		rho_e[i] = rot_mat @ rho_t[i] @ rot_mat.conj().T
+	return rho_e
+
+def rho_exp_large_infid(eps, rho_t, N):
+	temp_rho = copy.deepcopy(rho_t)
+	for i in range(4**N):
+		temp_rho[i] = pauli_1 @ temp_rho[i] @ pauli_1.conj().T
+	rho_e = np.zeros(rho_t.shape, dtype = np.complex128)
+	for i in range(rho_e.shape[0]):
+		theta = np.random.normal(scale = np.pi * eps)
+		phi = np.random.normal(scale = 2 * np.pi * eps)
+		lam = np.random.normal(scale = 2 * np.pi * eps)
+		rot_mat = u3(theta, phi, lam)
+		rho_e[i] = rot_mat @ temp_rho[i] @ rot_mat.conj().T
+	return rho_e
 
 if __name__ == "__main__":
 	rho = get_rho(N)
